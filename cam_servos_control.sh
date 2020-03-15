@@ -1,5 +1,15 @@
 #!/bin/bash
 
+LOW_SERVO_INIT_POS=0
+HIGH_SERVO_INIT_POS=20
+
+LOW_SERVO_MIN_RANGE=-140
+LOW_SERVO_MAX_RANGE=140
+HIGH_SERVO_MIN_RANGE=-30
+HIGH_SERVO_MAX_RANGE=100
+
+INIT_STEP_DELAY=0.0001
+
 function _init_pwms
 {
 	echo 0 >  /sys/class/pwm/pwmchip0/export 2>/dev/null
@@ -23,20 +33,14 @@ function _set_low_servo_pos
 	local pos_to_set=$1
 #	local pos_min=500000
 #	local pos_max=2000000
-	local pos_min=-140
-	local pos_max=140
 	local firstfact=7408
 	local secondfact=1550000
 
-	if [ $pos_to_set -lt $pos_min ]; then pos_to_set=$pos_min; fi
-	if [ $pos_to_set -gt $pos_max ]; then pos_to_set=$pos_max; fi
-
-	echo $pos_to_set
+	if [ $pos_to_set -lt $LOW_SERVO_MIN_RANGE ]; then pos_to_set=$LOW_SERVO_MIN_RANGE; fi
+	if [ $pos_to_set -gt $LOW_SERVO_MAX_RANGE ]; then pos_to_set=$LOW_SERVO_MAX_RANGE; fi
 
 	pos_to_set=$(echo "$firstfact*$pos_to_set+$secondfact" | bc)
 	echo $pos_to_set > /sys/class/pwm/pwmchip0/pwm1/duty_cycle
-
-	echo $pos_to_set
 }
 
 function _set_high_servo_pos
@@ -44,61 +48,50 @@ function _set_high_servo_pos
 	local pos_to_set=$1
 #	local pos_min=900000
 #	local pos_max=1400000
-	local pos_min=-30
-	local pos_max=100
 	local firstfact=11538
 	local secondfact=1250000
 
-	if [ $pos_to_set -lt $pos_min ]; then pos_to_set=$pos_min; fi
-	if [ $pos_to_set -gt $pos_max ]; then pos_to_set=$pos_max; fi
+	if [ $pos_to_set -lt $HIGH_SERVO_MIN_RANGE ]; then pos_to_set=$HIGH_SERVO_MIN_RANGE; fi
+	if [ $pos_to_set -gt $HIGH_SERVO_MAX_RANGE ]; then pos_to_set=$HIGH_SERVO_MAX_RANGE; fi
 
-	echo $pos_to_set
-	
 	pos_to_set=$(echo "$firstfact*$pos_to_set+$secondfact" | bc)
 	echo $pos_to_set > /sys/class/pwm/pwmchip0/pwm0/duty_cycle
 }
 
 function _init_low_servo
 {
-	_set_low_servo_pos -140
-	sleep 0.5
-
-	for pos in $(seq -140 1 140); do
+	for pos in $(seq $LOW_SERVO_MIN_RANGE 1 $LOW_SERVO_MAX_RANGE); do
 		_set_low_servo_pos $pos 
-		sleep 0.01
+		sleep $INIT_STEP_DELAY
 	done
 
-	for pos in $(seq 140 -1 0); do
+	for pos in $(seq $LOW_SERVO_MAX_RANGE -1 $LOW_SERVO_INIT_POS); do
 		_set_low_servo_pos $pos 
-		sleep 0.01
+		sleep $INIT_STEP_DELAY
 	done
 }
 
 function _init_high_servo
 {
-	_set_high_servo_pos -30
-	sleep 0.5
-
-	for pos in $(seq -30 1 100); do
+	for pos in $(seq $HIGH_SERVO_MIN_RANGE 1 $HIGH_SERVO_MAX_RANGE); do
 		_set_high_servo_pos $pos 
-		sleep 0.01
+		sleep $INIT_STEP_DELAY
 	done
 
-	for pos in $(seq 100 -1 -30); do
+	for pos in $(seq $HIGH_SERVO_MAX_RANGE -1 $HIGH_SERVO_MIN_RANGE); do
 		_set_high_servo_pos $pos 
-		sleep 0.01
+		sleep $INIT_STEP_DELAY
 	done
 
-	for pos in $(seq -30 1 20); do
+	for pos in $(seq $HIGH_SERVO_MIN_RANGE 1 $HIGH_SERVO_INIT_POS); do
 		_set_high_servo_pos $pos 
-		sleep 0.01
+		sleep $INIT_STEP_DELAY
 	done
 }
 
 function _init_servos
 {
 	_init_pwms
-
 	_init_low_servo &
 	_init_high_servo &
 
@@ -107,7 +100,8 @@ function _init_servos
 
 
 ##### main #####
-_init_servos
+#_init_servos
+#_set_low_servo_pos $1
 #_set_high_servo_pos $1
 
 ##### end ######
